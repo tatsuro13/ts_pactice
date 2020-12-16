@@ -12,7 +12,7 @@ interface DragTarget{
 
 //Project Type
 enum ProjectStatus {
-  Active, Finishd
+  Active, Finished
 }
 
 class Project {
@@ -64,6 +64,18 @@ class ProjectState extends State<Project> {
       ProjectStatus.Active,
     );
     this.projects.push(newProject);
+    this.updateListener();
+  }
+
+  moveProject(projectId: string, newStatus: ProjectStatus){
+    const project = this.projects.find(prj => prj.id === projectId);
+    if(project){
+      project.status = newStatus;
+      this.updateListener();
+    }
+  }
+
+  private updateListener(){
     for (const listenerFn of this.listeners) {
       listenerFn(this.projects.slice());
     }
@@ -188,7 +200,8 @@ class ProjectItem extends Component<HTMLDataListElement, HTMLElement> implements
 
   @autobind
   dragStartHandler(event: DragEvent){
-    console.log(event);
+    event.dataTransfer!.setData("text/plain", this.project.id);
+    event.dataTransfer!.effectAllowed = "move";
   }
   
   dragEndHandler(_: DragEvent){
@@ -220,12 +233,21 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> implements Drag
   }
 
   @autobind
-  dragOverHandler(_: DragEvent){
-    const listEl = this.element.querySelector("ul")!;
-    listEl.classList.add("droppable");
+  dragOverHandler(event: DragEvent){
+    if(event.dataTransfer && event.dataTransfer.types[0] === "text/plain"){
+      event.preventDefault();
+      const listEl = this.element.querySelector("ul")!;
+      listEl.classList.add("droppable");
+    }
   }
   
-  dropHandler(_: DragEvent){}
+  dropHandler(event: DragEvent){
+    const prjId = event.dataTransfer!.getData("text/plain");
+    projectState.moveProject(
+      prjId,
+      this.type === "active" ? ProjectStatus.Active : ProjectStatus.Finished,
+    )
+  }
   
   @autobind
   dragLeaveHandler(_: DragEvent){
@@ -243,7 +265,7 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> implements Drag
         if(this.type === "active"){
           return prj.status === ProjectStatus.Active;
         }
-        return prj.status === ProjectStatus.Finishd;
+        return prj.status === ProjectStatus.Finished;
       }
 
       )
